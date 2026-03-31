@@ -130,11 +130,8 @@ class TimerView: NSView {
         return bounds.contains(convert(point, from: superview)) ? self : nil
     }
 
-    func roboto(_ size: CGFloat) -> NSFont {
-        for name in ["RobotoMono-Thin","RobotoMono-Light","Roboto Mono Thin","Roboto Mono"] {
-            if let f = NSFont(name: name, size: size) { return f }
-        }
-        return .monospacedSystemFont(ofSize: size, weight: .thin)
+    func timerFont(_ size: CGFloat) -> NSFont {
+        return .systemFont(ofSize: size, weight: .thin)
     }
 
     init(frame: NSRect, pad: CGFloat) {
@@ -211,8 +208,10 @@ class TimerView: NSView {
         let inner = NSView(frame: NSRect(x: pad, y: pad, width: W, height: H))
         addSubview(inner)
 
-        timeLabel = lbl("05:00", font: roboto(48), color: .white)
+        timeLabel = lbl("", font: timerFont(48), color: .white)
+        timeLabel.alignment = .center
         timeLabel.frame = NSRect(x: 0, y: (H - 62) / 2, width: W, height: 62)
+        setKernedTime("05:00", color: .white)
         let sh = NSShadow()
         sh.shadowOffset = NSSize(width: 2, height: -2)
         sh.shadowBlurRadius = 0
@@ -225,7 +224,7 @@ class TimerView: NSView {
         controlsLayer.layer?.opacity = 0
         inner.addSubview(controlsLayer)
 
-        modeLabel = lbl("COUNTDOWN", font: roboto(12), color: .white.withAlphaComponent(0.45))
+        modeLabel = lbl("COUNTDOWN", font: timerFont(12), color: .white.withAlphaComponent(0.45))
         let timeLabelTop = (H - 62) / 2 + 62  // top of time label
         let modeLabelH: CGFloat = 16
         modeLabel.frame = NSRect(x: 0, y: (timeLabelTop + H) / 2 - modeLabelH / 2 - 10, width: W, height: modeLabelH)
@@ -250,7 +249,7 @@ class TimerView: NSView {
 
     @discardableResult
     func mkBtn(_ sym: String, x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat, id: String) -> NSTextField {
-        let f = lbl(sym, font: roboto(15), color: .white.withAlphaComponent(0.55))
+        let f = lbl(sym, font: timerFont(15), color: .white.withAlphaComponent(0.55))
         f.frame = NSRect(x: x, y: y, width: w, height: h)
         f.identifier = NSUserInterfaceItemIdentifier(id)
         controlsLayer.addSubview(f)
@@ -343,9 +342,9 @@ class TimerView: NSView {
         for b in allBtns {
             if b.frame.insetBy(dx: -4, dy: -4).contains(ip) {
                 switch b.identifier?.rawValue {
-                case "play":  toggleTimer()
-                case "reset": resetTimer()
-                case "mode":  switchMode()
+                case "play":  if isEditing { commitEdit() }; toggleTimer()
+                case "reset": if isEditing { commitEdit() }; resetTimer()
+                case "mode":  if isEditing { commitEdit() }; switchMode()
                 case "close": NSApp.terminate(nil)
                 default: break
                 }
@@ -427,8 +426,7 @@ class TimerView: NSView {
     func startEditing() {
         guard !running else { return }
         isEditing = true; editString = ""
-        timeLabel.stringValue = "00:00"
-        timeLabel.textColor   = .white.withAlphaComponent(0.5)
+        setKernedTime("00:00", color: .white.withAlphaComponent(0.5))
         fadeAnim?.invalidate()
         hoverAlpha = 1.0; controlsLayer.layer?.opacity = 1.0
         needsDisplay = true
@@ -470,13 +468,18 @@ class TimerView: NSView {
 
     func updateEditDisplay() {
         let digits = editString.filter { $0.isNumber }
-        guard !digits.isEmpty else { timeLabel.stringValue = "00:00"; return }
-        let padded = String(repeating: "0", count: max(0, 4 - digits.count)) + digits
-        if digits.count <= 4 {
-            timeLabel.stringValue = "\(padded.prefix(2)):\(padded.suffix(2))"
+        let text: String
+        if digits.isEmpty {
+            text = "00:00"
         } else {
-            timeLabel.stringValue = "\(digits.dropLast(4)):\(digits.dropLast(2).suffix(2)):\(digits.suffix(2))"
+            let padded = String(repeating: "0", count: max(0, 4 - digits.count)) + digits
+            if digits.count <= 4 {
+                text = "\(padded.prefix(2)):\(padded.suffix(2))"
+            } else {
+                text = "\(digits.dropLast(4)):\(digits.dropLast(2).suffix(2)):\(digits.suffix(2))"
+            }
         }
+        setKernedTime(text, color: .white.withAlphaComponent(0.5))
         needsDisplay = true
     }
 
@@ -570,21 +573,35 @@ class TimerView: NSView {
         }
     }
 
+    func setKernedTime(_ text: String, color: NSColor) {
+        let para = NSMutableParagraphStyle()
+        para.alignment = .center
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: timerFont(48),
+            .foregroundColor: color,
+            .kern: 5.0,
+            .paragraphStyle: para
+        ]
+        timeLabel.attributedStringValue = NSAttributedString(string: text, attributes: attrs)
+    }
+
     func refreshDisplay() {
         guard !isEditing else { return }
         let val = mode == .stopwatch ? elapsed : remaining
-        timeLabel.stringValue = formatTime(Int(val))
+        let text = formatTime(Int(val))
 
+        let color: NSColor
         if isDone {
-            timeLabel.textColor = flashOn
+            color = flashOn
                 ? NSColor(red: 1, green: 0.25, blue: 0.2, alpha: 1)
                 : NSColor(red: 0.5, green: 0.1, blue: 0.1, alpha: 1)
         } else {
             let urgent = mode == .countdown && remaining <= 10 && running
-            timeLabel.textColor = urgent
+            color = urgent
                 ? NSColor(red: 1, green: 0.37, blue: 0.25, alpha: 1)
                 : .white
         }
+        setKernedTime(text, color: color)
     }
 
     func formatTime(_ seconds: Int) -> String {
