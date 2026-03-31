@@ -14,19 +14,21 @@ A minimal, always-on-top countdown and stopwatch widget for macOS.
 - **Keyboard shortcuts** — Space to play/pause, Enter to confirm edits
 - **No dependencies** — single Swift file, no packages, no frameworks beyond Cocoa
 
-## Build & Run
+## Download
 
-Requires macOS 13+ and Xcode Command Line Tools.
+[**Download FloatTimer.zip**](https://github.com/AndreBalmet/FloatTimer/releases/latest) — unzip and drag to Applications.
+
+> On first launch, right-click → Open to bypass Gatekeeper (the app is ad-hoc signed, not notarized).
+
+Requires macOS 13+.
+
+## Build from Source
+
+If you prefer to build it yourself (requires Xcode Command Line Tools):
 
 ```bash
 ./build.sh
 open build/FloatTimer.app
-```
-
-To install:
-
-```bash
-cp -r build/FloatTimer.app /Applications/
 ```
 
 ## Usage
