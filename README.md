@@ -40,6 +40,7 @@ open build/FloatTimer.app
 | Switch mode | Click ⇄ |
 | Set custom time | Double-click the time display, type digits |
 | Move window | Click and drag anywhere on the widget |
+| Resize | Right-click and drag up/down to scale |
 | Close | Click ✕ |
 
 Time entry accepts digits as `MMSS` or `HHMMSS` (e.g. type `130` for 1 minute 30 seconds).
