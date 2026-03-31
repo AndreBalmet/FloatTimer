@@ -90,6 +90,12 @@ class TimerView: NSView {
     var dragOrigin   : NSPoint?  // window origin when drag started
     var dragMouse    : NSPoint?  // mouse screen position when drag started
 
+    // Scale (right-click drag)
+    var scaleFactor  : CGFloat = 1.0
+    var scaleStartY  : CGFloat?
+    var scaleStart   : CGFloat?
+    var scaleCenter  : NSPoint?  // fixed center point during scale drag
+
     // Done state (flash until reset)
     var isDone       = false
     var flashOn      = false
@@ -310,9 +316,11 @@ class TimerView: NSView {
         }
     }
 
-    /// Convert window-space point to inner UI coordinate space (subtract pad offset)
+    /// Convert window-space point to inner UI coordinate space
     func innerPoint(_ windowPt: NSPoint) -> NSPoint {
-        NSPoint(x: windowPt.x - pad, y: windowPt.y - pad)
+        // Convert from window (frame) coordinates to view bounds coordinates
+        let boundsP = convert(windowPt, from: nil)
+        return NSPoint(x: boundsP.x - pad, y: boundsP.y - pad)
     }
 
     func updateBtnHover(_ pt: NSPoint) {
@@ -366,6 +374,50 @@ class TimerView: NSView {
     override func mouseUp(with event: NSEvent) {
         dragOrigin = nil
         dragMouse  = nil
+    }
+
+    // ── Right-click drag to scale ──
+
+    override func rightMouseDown(with event: NSEvent) {
+        guard let win = window else { return }
+        scaleStartY = NSEvent.mouseLocation.y
+        scaleStart  = scaleFactor
+        scaleCenter = NSPoint(x: win.frame.midX, y: win.frame.midY)
+    }
+
+    override func rightMouseDragged(with event: NSEvent) {
+        guard let startY = scaleStartY, let startScale = scaleStart, let win = window else { return }
+        let dy = NSEvent.mouseLocation.y - startY
+        let newScale = min(3.0, max(0.5, startScale + dy / 150.0))
+        scaleFactor = newScale
+        applyScale(win: win)
+    }
+
+    override func rightMouseUp(with event: NSEvent) {
+        scaleStartY = nil
+        scaleStart  = nil
+        scaleCenter = nil
+    }
+
+    func applyScale(win: NSWindow) {
+        let baseW = W + pad * 2
+        let baseH = H + pad * 2
+        let newW = baseW * scaleFactor
+        let newH = baseH * scaleFactor
+
+        // Anchor to the center recorded at drag start
+        let cx = scaleCenter?.x ?? win.frame.midX
+        let cy = scaleCenter?.y ?? win.frame.midY
+        let newFrame = NSRect(x: cx - newW / 2, y: cy - newH / 2, width: newW, height: newH)
+        win.setFrame(newFrame, display: false)
+
+        // Resize view to fill the window, but set bounds to base size
+        // so all drawing coordinates stay the same — Cocoa scales automatically
+        self.frame = NSRect(origin: .zero, size: NSSize(width: newW, height: newH))
+        self.setBoundsSize(NSSize(width: baseW, height: baseH))
+
+        rebuildTracking()
+        needsDisplay = true
     }
 
     // ─────────────────────────────────────────────────────────────────────────
