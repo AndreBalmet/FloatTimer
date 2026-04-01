@@ -71,8 +71,8 @@ class TimerView: NSView {
     var mode      : Mode = .countdown
     var running          = false
     var elapsed          = 0.0
-    var countdown        = 300.0
-    var remaining        = 300.0
+    var countdown        = 1200.0
+    var remaining        = 1200.0
     var lastTick         = Date()
     var ticker   : Timer?
 
@@ -211,7 +211,7 @@ class TimerView: NSView {
         timeLabel = lbl("", font: timerFont(48), color: .white)
         timeLabel.alignment = .center
         timeLabel.frame = NSRect(x: 0, y: (H - 62) / 2, width: W, height: 62)
-        setKernedTime("05:00", color: .white)
+        setKernedTime("20:00", color: .white)
         let sh = NSShadow()
         sh.shadowOffset = NSSize(width: 2, height: -2)
         sh.shadowBlurRadius = 0
